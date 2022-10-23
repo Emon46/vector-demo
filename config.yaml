@@ -1,0 +1,28 @@
+image:
+  repository: timberio/vector
+  pullPolicy: IfNotPresent
+  tag: "nightly-2022-10-23-debian"
+customConfig:
+  data_dir: "/vector-data-dir"
+  sources:
+    file:
+      type: file
+      ignore_older_secs: 600
+      include:
+        - /var/log/**/*.log
+      read_from: beginning
+  transforms:
+    filter:
+      type: filter
+      inputs:
+        - file
+      condition: .level != "debug"
+  sinks:
+    filtered_file:
+      type: file
+      inputs:
+        - filter
+      compression: none
+      encoding:
+        codec: json
+      path: /tmp/vector-%Y-%m-%d.log
