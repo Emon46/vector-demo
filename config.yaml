@@ -9,20 +9,46 @@ customConfig:
       type: file
       ignore_older_secs: 600
       include:
-        - /tmp/test.log
+        - /tmp/demo.log
       read_from: beginning
   transforms:
-    filter:
+    filter_error:
       type: filter
       inputs:
         - file
-      condition: match(string(.message) ?? "", r'.*hello.*')
+      condition: match(string(.message) ?? "", r'.*error.*')
+    filter_info:
+      type: filter
+      inputs:
+        - file
+      condition: match(string(.message) ?? "", r'.*info.*')
+    filter_debug:
+      type: filter
+      inputs:
+        - file
+      condition: match(string(.message) ?? "", r'.*debug.*')
   sinks:
-    filtered_file:
+    filtered_error:
       type: file
       inputs:
-        - filter
+        - filter_error
       compression: none
       encoding:
         codec: json
-      path: /tmp/vector-%Y-%m-%d.log
+      path: /tmp/vector-error-%Y-%m-%d.log
+    filtered_info:
+      type: file
+      inputs:
+        - filter_info
+      compression: none
+      encoding:
+        codec: json
+      path: /tmp/vector-info-%Y-%m-%d.log
+    filtered_debug:
+      type: file
+      inputs:
+        - filter_debug
+      compression: none
+      encoding:
+        codec: json
+      path: /tmp/vector-debug-%Y-%m-%d.log
