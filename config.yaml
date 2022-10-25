@@ -9,14 +9,14 @@ customConfig:
       type: file
       ignore_older_secs: 600
       include:
-        - /var/log/**/*.log
+        - /tmp/test.log
       read_from: beginning
   transforms:
     filter:
       type: filter
       inputs:
         - file
-      condition: .level != "debug"
+      condition: match(string(.message) ?? "", r'.*hello.*')
   sinks:
     filtered_file:
       type: file
