@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vector-tel-agent-config
+  namespace: vector
+data:
+  vector.yaml: |
+    data_dir: /vector-data-dir
+    sinks:
+      filtered_vector_log:
+        compression: none
+        encoding:
+          codec: json
+        inputs:
+        - vector_agent_source
+        path: /tmp/vector-output-%Y-%m-%d.log
+        type: file
+    sources:
+      vector_agent_source:
+        address: 0.0.0.0:9000
+        type: vector
+        version: "2"

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vector-tel-agent
+  namespace: vector
+spec:
+  ports:
+  - port: 9000
+  selector:
+    app: vector-ta
+  clusterIP: None

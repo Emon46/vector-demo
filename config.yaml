@@ -11,44 +11,22 @@ customConfig:
       include:
         - /tmp/demo.log
       read_from: beginning
-  transforms:
-    filter_error:
-      type: filter
-      inputs:
-        - file
-      condition: match(string(.message) ?? "", r'.*error.*')
-    filter_info:
-      type: filter
-      inputs:
-        - file
-      condition: match(string(.message) ?? "", r'.*info.*')
-    filter_debug:
-      type: filter
-      inputs:
-        - file
-      condition: match(string(.message) ?? "", r'.*debug.*')
+
+    internal_log_source:
+      type: internal_logs
+
   sinks:
-    filtered_error:
+    filtered_demo_log:
       type: file
       inputs:
-        - filter_error
+        - file
       compression: none
       encoding:
         codec: json
       path: /tmp/vector-error-%Y-%m-%d.log
-    filtered_info:
-      type: file
+
+    vector_agent_sink:
+      type: vector
       inputs:
-        - filter_info
-      compression: none
-      encoding:
-        codec: json
-      path: /tmp/vector-info-%Y-%m-%d.log
-    filtered_debug:
-      type: file
-      inputs:
-        - filter_debug
-      compression: none
-      encoding:
-        codec: json
-      path: /tmp/vector-debug-%Y-%m-%d.log
+        - internal_log_source
+      address: http://vector-tel-agent:9000

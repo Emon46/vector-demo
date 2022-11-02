@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: vector-tel-agent
+  namespace: vector
+spec:
+  serviceName: vector-tel-agent
+  selector:
+    matchLabels:
+      app: vector-ta
+  template:
+    metadata:
+      labels:
+        app: vector-ta
+    spec:
+      containers:
+      - args:
+        - --config-dir
+        - /etc/vector/
+        env:
+        - name: VECTOR_SELF_NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        - name: VECTOR_SELF_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: VECTOR_SELF_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: PROCFS_ROOT
+          value: /host/proc
+        - name: SYSFS_ROOT
+          value: /host/sys
+        image: timberio/vector:nightly-2022-10-23-debian
+        imagePullPolicy: IfNotPresent
+        name: vector
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/log/
+          name: var-log
+          readOnly: true
+        - mountPath: /var/lib
+          name: var-lib
+          readOnly: true
+        - mountPath: /vector-data-dir
+          name: data-dir
+        - mountPath: /etc/vector
+          name: config-dir
+          readOnly: true
+        - mountPath: /host/proc
+          name: procfs
+          readOnly: true
+        - mountPath: /host/sys
+          name: sysfs
+          readOnly: true
+      volumes:
+      - hostPath:
+          path: /var/log/
+          type: ""
+        name: var-log
+      - hostPath:
+          path: /var/lib/
+          type: ""
+        name: var-lib
+      - hostPath:
+          path: /var/lib/vector/
+          type: ""
+        name: data-dir
+      - name: config-dir
+        projected:
+          defaultMode: 420
+          sources:
+          - configMap:
+              name: vector-tel-agent-config
+      - hostPath:
+          path: /proc
+          type: ""
+        name: procfs
+      - hostPath:
+          path: /sys
+          type: ""
+        name: sysfs
