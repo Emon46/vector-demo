@@ -8,7 +8,8 @@ kind create cluster
 
 # Install vector-agent as Daemonset
 ``` 
-helm install vector vector/vector-agent --devel --values config.yaml --create-namespace  --namespace vector
+helm repo add vector https://helm.vector.dev
+helm upgrade -i vector vector/vector-agent --devel --values config.yaml --create-namespace  --namespace vector
 ```
 
 Here inside `config.yaml` file we provided the desired config with which vector-agent is going to run.
@@ -212,4 +213,43 @@ spec:
           path: /sys
           type: ""
         name: sysfs
+```
+
+# AutoScaling StatefulSet
+Now we want to autoscale our vector telemetry agent statefulSet.
+
+Before Doing autoscaling, we need to make sure that we have installed [`metrics-server`](https://github.com/kubernetes-sigs/metrics-server#installation). This will help us to compute the resources like: `CPU`, `Memory`, etc.
+
+we need to add the flag `--kubelet-insecure-tls` in `args` To work the metrics-server-api properly in our local `kind` cluster.
+``` 
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+
+helm upgrade -i metrics-server metrics-server/metrics-server --devel --set args[0]=--kubelet-insecure-tls --create-namespace  --namespace kube-metric
+```
+now let's deploy the `HorizontalPodAutoscaler`.
+
+```
+kubectl apply -f tel-agent/horizontal-auto-scaling.yaml
+```
+
+```
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: vector-auto-scale
+  namespace: vector
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: vector-tel-agent
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
 ```
