@@ -6,7 +6,23 @@ metadata:
 data:
   vector.yaml: |
     data_dir: /vector-data-dir
+    sources:
+      k8s_logs_source:
+        type: kubernetes_logs
+        extra_field_selector: metadata.name==load-test-pod
+      vector_agent_source:
+        address: 0.0.0.0:9000
+        type: vector
+        version: "2"
     sinks:
+      k8s_logs_sink:
+        compression: none
+        encoding:
+          codec: json
+        inputs:
+        - k8s_logs_source
+        path: /tmp/k8s-logs-%Y-%m-%d.log
+        type: file
       filtered_vector_log:
         compression: none
         encoding:
@@ -15,8 +31,3 @@ data:
         - vector_agent_source
         path: /tmp/vector-output-%Y-%m-%d.log
         type: file
-    sources:
-      vector_agent_source:
-        address: 0.0.0.0:9000
-        type: vector
-        version: "2"

@@ -14,6 +14,11 @@ customConfig:
 
     internal_log_source:
       type: internal_logs
+  filter_error:
+    type: filter
+    inputs:
+      - file
+    condition: !match(string(.message) ?? "", r'.*error.*')
 
   sinks:
     filtered_demo_log:
@@ -24,7 +29,11 @@ customConfig:
       encoding:
         codec: json
       path: /tmp/vector-error-%Y-%m-%d.log
-
+#    vector_log_sink:
+#      type: vector
+#      inputs:
+#        - file
+#      address: http://vector-tel-agent:9000
     vector_agent_sink:
       type: vector
       inputs:
