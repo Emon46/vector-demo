@@ -11,31 +11,32 @@ customConfig:
       include:
         - /tmp/demo.log
       read_from: beginning
-
     internal_log_source:
       type: internal_logs
-  filter_error:
-    type: filter
-    inputs:
-      - file
-    condition: !match(string(.message) ?? "", r'.*error.*')
+
+  transforms:
+    filter_demo_logs:
+      type: filter
+      inputs:
+        - file
+      condition: contains(string(.message) ?? "", "no_tag") != true # !match(string(.message) ?? "", r'.*no_tag.*')
 
   sinks:
     filtered_demo_log:
       type: file
       inputs:
-        - file
+        - filter_demo_logs
       compression: none
       encoding:
         codec: json
-      path: /tmp/vector-error-%Y-%m-%d.log
-#    vector_log_sink:
-#      type: vector
-#      inputs:
-#        - file
-#      address: http://vector-tel-agent:9000
+      path: /tmp/vector-demo-logs-%Y-%m-%d.log
     vector_agent_sink:
       type: vector
       inputs:
         - internal_log_source
       address: http://vector-tel-agent:9000
+#    vector_log_sink:
+#      type: vector
+#      inputs:
+#        - file
+#      address: http://vector-tel-agent:9000

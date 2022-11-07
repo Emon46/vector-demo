@@ -14,13 +14,21 @@ data:
         address: 0.0.0.0:9000
         type: vector
         version: "2"
+    
+    transforms:
+      filter_k8s_logs:
+        type: filter
+        inputs:
+          - k8s_logs_source
+        condition: contains(string(.message) ?? "", "no_tag") != true
+    
     sinks:
       k8s_logs_sink:
         compression: none
         encoding:
           codec: json
         inputs:
-        - k8s_logs_source
+        - filter_k8s_logs
         path: /tmp/k8s-logs-%Y-%m-%d.log
         type: file
       filtered_vector_log:
@@ -29,5 +37,5 @@ data:
           codec: json
         inputs:
         - vector_agent_source
-        path: /tmp/vector-output-%Y-%m-%d.log
+        path: /tmp/vector-daemon-set-logs-%Y-%m-%d.log
         type: file
