@@ -1,7 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: vector-tel-agent
+  name: vector-data-plane
 rules:
 - apiGroups:
   - ""
@@ -9,26 +9,28 @@ rules:
   - namespaces
   - pods
   - nodes
+  - configmaps
   verbs:
   - watch
   - get
   - list
+  - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: vector-tel-agent
+  name: vector-data-plane
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: vector-tel-agent
+  name: vector-data-plane
 subjects:
 - kind: ServiceAccount
-  name: vector-tel-agent
+  name: vector-data-plane
   namespace: vector
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: vector-tel-agent
+  name: vector-data-plane
   namespace: vector

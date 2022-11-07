@@ -1,13 +1,13 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: vector-auto-scale
+  name: vector-dp-auto-scale
   namespace: vector
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: StatefulSet
-    name: vector-tel-agent
+    name: vector-data-plane
   minReplicas: 1
   maxReplicas: 5
   metrics:

@@ -1,0 +1,37 @@
+image:
+  repository: timberio/vector
+  pullPolicy: IfNotPresent
+  tag: "nightly-2022-10-23-debian"
+service:
+  # Whether to create service resource or not.
+  enabled: true
+  annotations: {}
+  type: ClusterIP
+  topologyKeys: {}
+  ports:
+    - name: api
+      port: 8686
+      protocol: TCP
+      targetPort: 8686
+    - name: vector-port
+      port: 9000
+      protocol: TCP
+      targetPort: 9000
+    
+customConfig:
+  data_dir: "/vector-data-dir"
+  sources:
+    vector_agent_source:
+      address: 0.0.0.0:9000
+      type: vector
+      version: "2"
+
+  sinks:
+    filtered_vector_log:
+      compression: none
+      encoding:
+        codec: json
+      inputs:
+        - vector_agent_source
+      path: /tmp/vector-statefulSet-logs-%Y-%m-%d.log
+      type: file

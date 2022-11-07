@@ -1,21 +1,24 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: vector-tel-agent
+  name: vector-data-plane
   namespace: vector
 spec:
-  serviceName: vector-tel-agent
+  serviceName: vector-data-plane
   selector:
     matchLabels:
-      app: vector-ta
+      app: vector-dp
   template:
     metadata:
       labels:
-        app: vector-ta
+        app: vector-dp
     spec:
-      serviceAccountName: "vector-tel-agent"
+      serviceAccountName: "vector-data-plane"
       containers:
-      - args:
+      - command:
+        - vector
+        args:
+        - --watch-config
         - --config-dir
         - /etc/vector/
         env:
@@ -84,7 +87,7 @@ spec:
           defaultMode: 420
           sources:
           - configMap:
-              name: vector-tel-agent-config
+              name: vector-data-plane-config
       - hostPath:
           path: /proc
           type: ""
