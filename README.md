@@ -4,7 +4,7 @@ I have created a kubernetes cluster in my local machine with [kind](https://kind
 kind create cluster
 ```
 # Here is the Flow Diagram
-<img src='./pipeline.jpeg'/>
+<img src='./pipeline.png'/>
 
 # Install vector-telemetry-agent as Daemonset
 ``` 
@@ -58,9 +58,9 @@ customConfig:
 
 # Install vector Dataplane
 here we are going to create a couple of things
-- statefulSet for vector-data-plane
-- create service to connect with `vector-data-plane`. exposed `9000` port.
-- create configmap which is mount inside `vector-data-plane` pods. this is the config with which vector-data-plane will run.
+- statefulSet for data-plane
+- create service to connect with `data-plane`. exposed `9000` port.
+- create configmap which is mount inside `data-plane` pods. this is the config with which data-plane will run.
 - Create RBAC to give the proper permission to our DataPlane StatefulSet
 here is the config:
 ```
@@ -95,14 +95,14 @@ here is the config:
         address: http://vector-agent:9000
 ```
 
-in `sink`, we have added `vector` type which pass this `vector-data-plane` pod's logs
+in `sink`, we have added `vector` type which pass this `data-plane` pod's logs
 to another `vector-telemetry-agent`'s  `source`. In the telemetry agent, we have exposed a receiver server in port 9000 which will take these logs as input.
 Here We have mentioned the `service name` of our `vector telemetry agent` in `spec.address` of `vector_dataplane_sink`.
 
 Let's apply the configmap, service, statefulset
 ``` 
 kubectl apply -f data-plane/rbac.yaml
-kubectl apply -f data-plane/vector-dp-sts.yaml
+kubectl apply -f data-plane/data-plane-sts.yaml
 kubectl apply -f data-plane/data-plane-config.yaml
 kubectl apply -f data-plane/service.yaml
 ```
@@ -113,7 +113,7 @@ here is the yamls file:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: vector-data-plane
+  name: data-plane
 rules:
 - apiGroups:
   - ""
@@ -129,20 +129,20 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: vector-data-plane
+  name: data-plane
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: vector-data-plane
+  name: data-plane
 subjects:
 - kind: ServiceAccount
-  name: vector-data-plane
+  name: data-plane
   namespace: vector
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: vector-data-plane
+  name: data-plane
   namespace: vector
 
 ```
@@ -152,13 +152,13 @@ metadata:
 apiVersion: v1
 kind: Service
 metadata:
-  name: vector-data-plane
+  name: data-plane
   namespace: vector
 spec:
   ports:
   - port: 9000
   selector:
-    app: vector-dp
+    app: data-plane
   clusterIP: None
 ``` 
 ### ConfigMap.yaml
@@ -166,7 +166,7 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vector-data-plane-config
+  name: data-plane-config
   namespace: vector
 data:
   vector.yaml: |
@@ -207,19 +207,19 @@ data:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: vector-data-plane
+  name: data-plane
   namespace: vector
 spec:
-  serviceName: vector-data-plane
+  serviceName: data-plane
   selector:
     matchLabels:
-      app: vector-dp
+      app: data-plane
   template:
     metadata:
       labels:
-        app: vector-dp
+        app: data-plane
     spec:
-      serviceAccountName: "vector-data-plane"
+      serviceAccountName: "data-plane"
       containers:
       - args:
         - --config-dir
@@ -290,7 +290,7 @@ spec:
           defaultMode: 420
           sources:
           - configMap:
-              name: vector-data-plane-config
+              name: data-plane-config
       - hostPath:
           path: /proc
           type: ""
@@ -323,13 +323,13 @@ kubectl apply -f data-plane/horizontal-auto-scaling.yaml
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: vector-dp-auto-scale
+  name: data-plane-autoscale
   namespace: vector
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: StatefulSet
-    name: vector-data-plane
+    name: data-plane
   minReplicas: 1
   maxReplicas: 5
   metrics:

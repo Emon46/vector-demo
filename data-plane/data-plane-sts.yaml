@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: vector-data-plane
+  name: data-plane
   namespace: vector
 spec:
-  serviceName: vector-data-plane
+  serviceName: data-plane
   selector:
     matchLabels:
-      app: vector-dp
+      app: data-plane
   template:
     metadata:
       labels:
-        app: vector-dp
+        app: data-plane
     spec:
-      serviceAccountName: "vector-data-plane"
+      serviceAccountName: "data-plane"
       containers:
       - command:
         - vector
@@ -87,7 +87,7 @@ spec:
           defaultMode: 420
           sources:
           - configMap:
-              name: vector-data-plane-config
+              name: data-plane-config
       - hostPath:
           path: /proc
           type: ""
