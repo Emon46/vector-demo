@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: vector-data-plane
+  name: data-plane
   namespace: vector
 spec:
   ports:
   - port: 9000
   selector:
-    app: vector-dp
+    app: data-plane
   clusterIP: None

@@ -16,7 +16,7 @@ sleep 10
 kubectl apply -f data-plane/rbac.yaml
 kubectl apply -f data-plane/service.yaml
 kubectl apply -f data-plane/data-plane-config.yaml
-kubectl apply -f data-plane/vector-dp-sts.yaml
+kubectl apply -f data-plane/data-plane-sts.yaml
 
 
 sleep 20

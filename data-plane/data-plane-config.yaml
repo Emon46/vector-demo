@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vector-data-plane-config
+  name: data-plane-config
   namespace: vector
 data:
   vector.yaml: |
