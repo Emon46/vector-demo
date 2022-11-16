@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "data-plane.fullname" . }}-config
+  labels:
+    {{- include "data-plane.labels" . | nindent 4 }}
+data:
+  {{- if .Values.customConfig }}
+  vector.yaml: |
+  {{ tpl (toYaml .Values.customConfig) . | indent 4 }}
+  {{- else }}
+  vector.yaml: |
+    data_dir: /vector-data-dir
+    sources:
+      k8s_logs_source:
+        type: kubernetes_logs
+        extra_field_selector: metadata.name=={{ .Values.loadTesterPodName }}
+      internal_logs_source:
+        type: internal_logs
+
+    transforms:
+      filter_k8s_logs:
+        type: filter
+        inputs:
+          - k8s_logs_source
+        condition: contains(string(.message) ?? "", "no_tag") != true
+
+    sinks:
+      k8s_logs_sink:
+        compression: none
+        encoding:
+          codec: json
+        inputs:
+          - filter_k8s_logs
+        path: /tmp/source-containers-logs-%Y-%m-%d.log
+        type: file
+      data_plane_logs_sink:
+        type: vector
+        inputs:
+          - internal_logs_source
+        address: http://{{ .Values.telemetryServiceName }}.{{ .Values.telemetryServiceNamespace }}.svc:9000
+    {{- end }}

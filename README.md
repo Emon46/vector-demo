@@ -4,20 +4,45 @@ I have created a kubernetes cluster in my local machine with [kind](https://kind
 kind create cluster
 ```
 # Here is the Flow Diagram
-<img src='./pipeline.png'/>
+<img src='images/pipeline.png'/>
 
-# Install vector-telemetry-agent as Daemonset
+# Clone Repo
+``` 
+git clone git@github.com:Emon46/vector-demo.git
+cd vector-demo
+```
+# observo metrics-server
+Before Doing autoscaling, we need to make sure that we have installed [`metrics-server`](https://github.com/kubernetes-sigs/metrics-server#installation). This will help us to compute the resources like: `CPU`, `Memory`, etc.
+
+To work the metrics-server-api properly in our local `kind` cluster, we need to add the flag `--kubelet-insecure-tls` in `args`.
+
+As we want our observo Data-plane Horizontally auto-scalable, that's why are going to install the metrics servers  first.
+``` 
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+helm upgrade -i obsv-metrics-server metrics-server/metrics-server --devel --set args[0]=--kubelet-insecure-tls --create-namespace  --namespace obsv-metrics-server
+```
+# observo telemetry-agent as Daemonset
+Now we want to run our telemetry agent in all nodes of k8s cluster. That's why we will install it as daemon-set. 
+
 ``` 
 helm repo add vector https://helm.vector.dev
-helm upgrade -i vector vector/vector-agent --devel --values telemetry-agent/config.yaml --create-namespace --namespace vector
+helm upgrade --install obsv-telemetry-agent vector/vector-agent --devel --values telemetry-agent/config.yaml --create-namespace --namespace obsv-telemetry-agent
 ```
+Above helm charts will create following resources:
+- `Daemonset`: where our telemetry agent service container will run.
+- `Service`: which will expose ports from telemetry service `daemonset`. This will help other services to interact with telemetry agent service
+- `ClusterRole`, `ClusterRoleBinding`, `ServiceAccount` : This will set the Authorization rules for telemetry agent `daemonset`'s pods to access other resources in k8s cluster
+- `ConfigMap`: contains the configuration with which telemetry agent server is going to run
 
-`config.yaml` file refers the `config` with which `vector-telemetry-agent` is going to run.
+`config.yaml` file refers the `config` with which `obsv-telemetry-agent` is going to run.
 ```
 image:
   repository: timberio/vector
   pullPolicy: IfNotPresent
   tag: "nightly-2022-10-23-debian"
+
+fullnameOverride: "obsv-telemetry-agent"
+
 service:
   # Whether to create service resource or not.
   enabled: true
@@ -37,19 +62,19 @@ service:
 customConfig:
   data_dir: "/vector-data-dir"
   sources:
-    vector_agent_source:
+    obsv_dataplane_logs_source:
       address: 0.0.0.0:9000
       type: vector
       version: "2"
 
   sinks:
-    filtered_vector_log:
+    obsv_dataplane_logs_sink:
       compression: none
       encoding:
         codec: json
       inputs:
-        - vector_agent_source
-      path: /tmp/vector-statefulSet-logs-%Y-%m-%d.log
+        - obsv_dataplane_logs_source
+      path: /tmp/observo-data-plane-logs-%Y-%m-%d.log
       type: file
 
 ```
@@ -57,55 +82,55 @@ customConfig:
 
 
 # Install vector Dataplane
-here we are going to create a couple of things
-- statefulSet for data-plane
-- create service to connect with `data-plane`. exposed `9000` port.
-- create configmap which is mount inside `data-plane` pods. this is the config with which data-plane will run.
-- Create RBAC to give the proper permission to our DataPlane StatefulSet
+``` 
+helm upgrade  --install obsv-data-plane deploy/helm/data-plane --devel --create-namespace  --namespace obsv-data-plane
+```
+Above helm chart will create following resources
+- `StatefulSet`: which will run Observo Dataplane service.
+- `Service`: will create service to communicate with `observo data-plane` service. Now, We have exposed `8686` port for now, later we can add more port if required.
+- `configmap`: will create a configmap with which `observo data-plane` services are going to run.
+- `ClusterRole`, `ClusterRoleBinding`, `ServiceAccount` : This will set the Authorization rules for observo data-plane  `statefulset`'s pods to access other resources in k8s cluster.
+- `HorizontalPodAutoscaler`: This will make `Data-plane statefulSet` horizontally auto scalable.
+
 here is the config:
 ```
-    data_dir: /vector-data-dir
-    sources:
-      k8s_logs_source:
-        type: kubernetes_logs
-        extra_field_selector: metadata.name==load-test-pod
-      internal_log_source:
-        type: internal_logs
-    
-    transforms:
-      filter_k8s_logs:
-        type: filter
-        inputs:
-          - k8s_logs_source
-        condition: contains(string(.message) ?? "", "no_tag") != true
-    
-    sinks:
-      k8s_logs_sink:
-        compression: none
-        encoding:
-          codec: json
-        inputs:
-        - filter_k8s_logs
-        path: /tmp/vector-demo-logs-%Y-%m-%d.log
-        type: file
-      vector_dataplane_sink:
-        type: vector
-        inputs:
-          - internal_log_source
-        address: http://vector-agent:9000
+data_dir: /vector-data-dir
+sources:
+  k8s_logs_source:
+    type: kubernetes_logs
+    extra_field_selector: metadata.name==load-test-pod
+  internal_logs_source:
+    type: internal_logs
+
+transforms:
+  filter_k8s_logs:
+    type: filter
+    inputs:
+      - k8s_logs_source
+    condition: contains(string(.message) ?? "", "no_tag") != true
+
+sinks:
+  k8s_logs_sink:
+    compression: none
+    encoding:
+      codec: json
+    inputs:
+      - filter_k8s_logs
+    path: /tmp/source-containers-logs-%Y-%m-%d.log
+    type: file
+  data_plane_logs_sink:
+    type: vector
+    inputs:
+      - internal_logs_source
+    address: http://obsv-telemetry-agent.obsv-telemetry-agent.svc:9000
+
 ```
 
-in `sink`, we have added `vector` type which pass this `data-plane` pod's logs
-to another `vector-telemetry-agent`'s  `source`. In the telemetry agent, we have exposed a receiver server in port 9000 which will take these logs as input.
-Here We have mentioned the `service name` of our `vector telemetry agent` in `spec.address` of `vector_dataplane_sink`.
+in `sink`, we have added `vector` type which pass this `observo data-plane` pod's logs
+to another `obsv-telemetry-agent`'s  `source`. In the telemetry agent, we have exposed a receiver server in port 9000 which will get these logs as input.
+Here We have mentioned the k8s `service name` and `service namespace` of our `observo telemetry agent` in `spec.address` of `data_plane_logs_sink`.
 
-Let's apply the configmap, service, statefulset
-``` 
-kubectl apply -f data-plane/rbac.yaml
-kubectl apply -f data-plane/data-plane-sts.yaml
-kubectl apply -f data-plane/data-plane-config.yaml
-kubectl apply -f data-plane/service.yaml
-```
+
 here is the yamls file:
 
 ### rbac.yaml
@@ -113,7 +138,7 @@ here is the yamls file:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: data-plane
+  name: obsv-data-plane
 rules:
 - apiGroups:
   - ""
@@ -121,29 +146,32 @@ rules:
   - namespaces
   - pods
   - nodes
+  - configmaps
   verbs:
   - watch
   - get
   - list
+  - patch
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: data-plane
+  name: obsv-data-plane
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: data-plane
+  name: obsv-data-plane
 subjects:
 - kind: ServiceAccount
-  name: data-plane
-  namespace: vector
+  name: obsv-data-plane
+  namespace: obsv-data-plane
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: data-plane
-  namespace: vector
+  name: obsv-data-plane
+  namespace: obsv-data-plane
 
 ```
 
@@ -152,22 +180,33 @@ metadata:
 apiVersion: v1
 kind: Service
 metadata:
-  name: data-plane
-  namespace: vector
+  name: obsv-data-plane
+  namespace: obsv-data-plane
+  annotations:
+    meta.helm.sh/release-name: obsv-data-plane
+    meta.helm.sh/release-namespace: obsv-data-plane
+  labels:
+    app.kubernetes.io/instance: obsv-data-plane
+    app.kubernetes.io/name: data-plane
 spec:
+  type: ClusterIP
   ports:
-  - port: 9000
+  - name: api
+    port: 8686
+    protocol: TCP
+    targetPort: 8686
   selector:
-    app: data-plane
-  clusterIP: None
+    app.kubernetes.io/instance: obsv-data-plane
+    app.kubernetes.io/name: data-plane
+
 ``` 
 ### ConfigMap.yaml
 ```
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: data-plane-config
-  namespace: vector
+  name: obsv-data-plane-config
+  namespace: obsv-data-plane
 data:
   vector.yaml: |
     data_dir: /vector-data-dir
@@ -175,30 +214,30 @@ data:
       k8s_logs_source:
         type: kubernetes_logs
         extra_field_selector: metadata.name==load-test-pod
-      internal_log_source:
+      internal_logs_source:
         type: internal_logs
-    
+
     transforms:
       filter_k8s_logs:
         type: filter
         inputs:
           - k8s_logs_source
         condition: contains(string(.message) ?? "", "no_tag") != true
-    
+
     sinks:
       k8s_logs_sink:
         compression: none
         encoding:
           codec: json
         inputs:
-        - filter_k8s_logs
-        path: /tmp/vector-demo-logs-%Y-%m-%d.log
+          - filter_k8s_logs
+        path: /tmp/source-containers-logs-%Y-%m-%d.log
         type: file
-      vector_agent_sink:
+      data_plane_logs_sink:
         type: vector
         inputs:
-          - internal_log_source
-        address: http://vector-agent:9000
+          - internal_logs_source
+        address: http://obsv-telemetry-agent.obsv-telemetry-agent.svc:9000
 
 ```
 ### StatefulSet.yaml
@@ -207,23 +246,34 @@ data:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: data-plane
-  namespace: vector
+  annotations:
+    meta.helm.sh/release-name: obsv-data-plane
+    meta.helm.sh/release-namespace: obsv-data-plane
+  labels:
+    app.kubernetes.io/instance: obsv-data-plane
+    app.kubernetes.io/name: data-plane
+  name: obsv-data-plane
+  namespace: obsv-data-plane
 spec:
-  serviceName: data-plane
+  replicas: 1
   selector:
     matchLabels:
-      app: data-plane
+      app.kubernetes.io/instance: obsv-data-plane
+      app.kubernetes.io/name: data-plane
+  serviceName: obsv-data-plane
   template:
     metadata:
       labels:
-        app: data-plane
+        app.kubernetes.io/instance: obsv-data-plane
+        app.kubernetes.io/name: data-plane
     spec:
-      serviceAccountName: "data-plane"
       containers:
       - args:
+        - --watch-config
         - --config-dir
         - /etc/vector/
+        command:
+        - vector
         env:
         - name: VECTOR_SELF_NODE_NAME
           valueFrom:
@@ -246,12 +296,11 @@ spec:
           value: /host/sys
         image: timberio/vector:nightly-2022-10-23-debian
         imagePullPolicy: IfNotPresent
-        name: vector
+        name: data-plane
         resources:
-          limits:
-            cpu: 500m
           requests:
-            cpu: 200m
+            cpu: 100m
+            memory: 128Mi
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
@@ -272,6 +321,10 @@ spec:
         - mountPath: /host/sys
           name: sysfs
           readOnly: true
+      restartPolicy: Always
+      serviceAccount: obsv-data-plane
+      serviceAccountName: obsv-data-plane
+      terminationGracePeriodSeconds: 30
       volumes:
       - hostPath:
           path: /var/log/
@@ -290,7 +343,7 @@ spec:
           defaultMode: 420
           sources:
           - configMap:
-              name: data-plane-config
+              name: obsv-data-plane-config
       - hostPath:
           path: /proc
           type: ""
@@ -299,45 +352,44 @@ spec:
           path: /sys
           type: ""
         name: sysfs
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
 
 ```
 
-# AutoScaling StatefulSet
-Now we want to autoscale our vector dataplane statefulSet.
-
-Before Doing autoscaling, we need to make sure that we have installed [`metrics-server`](https://github.com/kubernetes-sigs/metrics-server#installation). This will help us to compute the resources like: `CPU`, `Memory`, etc.
-
-To work the metrics-server-api properly in our local `kind` cluster, we need to add the flag `--kubelet-insecure-tls` in `args`.
-``` 
-helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
-
-helm upgrade -i metrics-server metrics-server/metrics-server --devel --set args[0]=--kubelet-insecure-tls --create-namespace  --namespace kube-metric
-```
-now let's deploy the `HorizontalPodAutoscaler`.
-
-```
-kubectl apply -f data-plane/horizontal-auto-scaling.yaml
-```
-
+HorizontalPodAutoscaler's yaml:
 ```
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: data-plane-autoscale
-  namespace: vector
+  annotations:
+    meta.helm.sh/release-name: obsv-data-plane
+    meta.helm.sh/release-namespace: obsv-data-plane
+  labels:
+    app.kubernetes.io/instance: obsv-data-plane
+    app.kubernetes.io/name: data-plane
+  name: obsv-data-plane-autoscale
+  namespace: obsv-data-plane
 spec:
+  maxReplicas: 10
+  metrics:
+  - resource:
+      name: memory
+      target:
+        averageUtilization: 80
+        type: Utilization
+    type: Resource
+  - resource:
+      name: cpu
+      target:
+        averageUtilization: 80
+        type: Utilization
+    type: Resource
+  minReplicas: 1
   scaleTargetRef:
     apiVersion: apps/v1
     kind: StatefulSet
-    name: data-plane
-  minReplicas: 1
-  maxReplicas: 5
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 50
-
+    name: obsv-data-plane
 ```
