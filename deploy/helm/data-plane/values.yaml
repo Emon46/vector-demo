@@ -16,7 +16,7 @@ fullnameOverride: ""
 
 # the pod name for which we are going to collect the log in our data-plane
 # We can also test the horizontal scaling feature
-loadTesterPodName: load-test-pod
+loadTesterPodName: load-gen-test
 # TelemetryServiceName refer to the k8s `service` that has been created for communicating with our telemetry agent server
 telemetryServiceName: obsv-telemetry-agent
 # TelemetryServiceNamespace refer to the k8s `namespace` where the service has been created

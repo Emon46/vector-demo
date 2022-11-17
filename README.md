@@ -12,9 +12,9 @@ git clone git@github.com:Emon46/vector-demo.git
 cd vector-demo
 ```
 # observo metrics-server
-Before Doing autoscaling, we need to make sure that we have installed [`metrics-server`](https://github.com/kubernetes-sigs/metrics-server#installation). This will help us to compute the resources like: `CPU`, `Memory`, etc.
+Before Doing autoscaling, we need to make sure that we have installed [`metrics-server`](https://github.com/kubernetes-sigs/metrics-server#installation). This will help us to compute the resources like `CPU`, `Memory`, etc.
 
-To work the metrics-server-api properly in our local `kind` cluster, we need to add the flag `--kubelet-insecure-tls` in `args`.
+To run the metrics-server-api properly in our local `kind` cluster, we need to add the flag `--kubelet-insecure-tls` in `args`.
 
 As we want our observo Data-plane Horizontally auto-scalable, that's why are going to install the metrics servers  first.
 ``` 
@@ -98,7 +98,7 @@ data_dir: /vector-data-dir
 sources:
   k8s_logs_source:
     type: kubernetes_logs
-    extra_field_selector: metadata.name==load-test-pod
+    extra_field_selector: metadata.name==load-gen-test
   internal_logs_source:
     type: internal_logs
 
@@ -213,7 +213,7 @@ data:
     sources:
       k8s_logs_source:
         type: kubernetes_logs
-        extra_field_selector: metadata.name==load-test-pod
+        extra_field_selector: metadata.name==load-gen-test
       internal_logs_source:
         type: internal_logs
 

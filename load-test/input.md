@@ -4,12 +4,12 @@ Theee is a env `MAX_RANGE` in pod spec which defines the number of iteration for
 apiVersion: v1
 kind: Pod
 metadata:
-  name: load-test-pod
+  name: load-gen-test
   namespace: demo
 spec:
   containers:
-    - name: load-test
-      image: hremon331046/load-tester:latest
+    - name: load-gen
+      image: hremon331046/load-gen:latest
       imagePullPolicy: IfNotPresent
       env:
         - name: MAX_RANGE
@@ -17,22 +17,22 @@ spec:
   restartPolicy: Never
 ```
 ## build docker image
-cd inside  `load-tester` sub-directory.
+cd inside  `load-test` sub-directory.
 ``` 
-cd load-tester
+cd load-test
 make build
 ```
 
 ## push docker image
-cd inside  `load-tester` sub-directory. this will push docker image into remote registry
+cd inside  `load-test` sub-directory. this will push docker image into remote registry
 ``` 
-cd load-tester
+cd load-test
 make push
 ```
 
 ## push to kind docker image
-cd inside  `load-tester` sub-directory. this will not push docker image into remote registry. It will only load image inside `kind cluster`.
+cd inside  `load-test` sub-directory. this will not push docker image into remote registry. It will only load image inside `kind cluster`.
 ``` 
-cd load-tester
+cd load-test
 make build
 ```

@@ -1,7 +1,7 @@
 REGISTRY ?= hremon331046
 # Image URL to use all building/pushing image targets
 TAG      ?= $(shell git describe --exact-match --abbrev=0 2>/dev/null || echo "latest")
-IMG ?= $(REGISTRY)/load-tester:$(TAG)
+IMG ?= $(REGISTRY)/load-gen:$(TAG)
 # ENVTEST_K8S_VERSION refers to the versi
 
 .PHONY: build
