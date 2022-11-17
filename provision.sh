@@ -3,20 +3,14 @@
 set -euo pipefail
 
 helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
-helm upgrade -i metrics-server metrics-server/metrics-server --devel --set args[0]=--kubelet-insecure-tls --create-namespace  --namespace kube-metric
+helm upgrade -i obsv-metrics-server metrics-server/metrics-server --devel --set args[0]=--kubelet-insecure-tls --create-namespace  --namespace obsv-metrics-server
 
 sleep 10
 helm repo add vector https://helm.vector.dev
-helm upgrade -i vector vector/vector-agent --devel --values telemetry-agent/config.yaml --create-namespace --namespace vector
+helm upgrade --install obsv-telemetry-agent vector/vector-agent --devel --values telemetry-agent/config.yaml --create-namespace --namespace obsv-telemetry-agent
 
 sleep 10
-kubectl apply -f data-plane/horizontal-auto-scaling.yaml
-
-sleep 10
-kubectl apply -f data-plane/rbac.yaml
-kubectl apply -f data-plane/service.yaml
-kubectl apply -f data-plane/data-plane-config.yaml
-kubectl apply -f data-plane/data-plane-sts.yaml
+helm upgrade  --install obsv-data-plane deploy/helm/data-plane --devel --create-namespace  --namespace obsv-data-plane
 
 
 sleep 20

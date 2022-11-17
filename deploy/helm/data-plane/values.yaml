@@ -1,0 +1,80 @@
+# Default values for data-plane.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: timberio/vector
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "nightly-2022-10-23-debian"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# the pod name for which we are going to collect the log in our data-plane
+# We can also test the horizontal scaling feature
+loadTesterPodName: load-test-pod
+# TelemetryServiceName refer to the k8s `service` that has been created for communicating with our telemetry agent server
+telemetryServiceName: obsv-telemetry-agent
+# TelemetryServiceNamespace refer to the k8s `namespace` where the service has been created
+telemetryServiceNamespace: obsv-telemetry-agent
+
+# Specify custom contents for the data-plane config
+# ref: https://vector.dev/docs/reference/configuration/
+# Note: a complete and valid configuration is required. If used, the deprecated
+# configuration keys will be ignored. More information can be found at:
+# https://vector.dev/highlights/2021-07-13-helm-customconfig
+customConfig:
+
+serviceAccount:
+  # Annotations to add to the service account
+  annotations: {}
+
+podAnnotations: {}
+
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  requests:
+     cpu: 100m
+     memory: 128Mi
+
+autoscaling:
+  minReplicas: 1
+  maxReplicas: 10
+  cpu:
+    targetCPUUtilizationPercentage: 80
+  memory:
+    targetMemoryUtilizationPercentage: 80
+
+service:
+  annotations: {}
+  type: ClusterIP
+  ports:
+    - name: api
+      port: 8686
+      protocol: TCP
+      targetPort: 8686
+    # Additional ports (Vector sources, etc.)
+    # - name: source_port
+    #   port: 9000
+    #   protocol: TCP
+    #   targetPort: 9000

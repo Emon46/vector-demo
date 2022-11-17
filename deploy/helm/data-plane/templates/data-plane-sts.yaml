@@ -1,19 +1,25 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: data-plane
-  namespace: vector
+  name: {{ include "data-plane.fullname" . }}
+  labels:
+    {{- include "data-plane.labels" . | nindent 4 }}
 spec:
-  serviceName: data-plane
+  serviceName: {{ include "data-plane.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: data-plane
+      {{- include "data-plane.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       labels:
-        app: data-plane
+        {{- include "data-plane.selectorLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: "data-plane"
+      serviceAccountName: {{ include "data-plane.fullname" . }}
       containers:
       - command:
         - vector
@@ -41,14 +47,13 @@ spec:
           value: /host/proc
         - name: SYSFS_ROOT
           value: /host/sys
-        image: timberio/vector:nightly-2022-10-23-debian
-        imagePullPolicy: IfNotPresent
-        name: vector
+        name: {{ .Chart.Name }}
+        securityContext:
+        {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         resources:
-          limits:
-            cpu: 500m
-          requests:
-            cpu: 200m
+          {{- toYaml .Values.resources | nindent 12 }}
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
@@ -87,7 +92,7 @@ spec:
           defaultMode: 420
           sources:
           - configMap:
-              name: data-plane-config
+              name: {{ include "data-plane.fullname" . }}-config
       - hostPath:
           path: /proc
           type: ""

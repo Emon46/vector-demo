@@ -2,6 +2,9 @@ image:
   repository: timberio/vector
   pullPolicy: IfNotPresent
   tag: "nightly-2022-10-23-debian"
+
+fullnameOverride: "obsv-telemetry-agent"
+
 service:
   # Whether to create service resource or not.
   enabled: true
@@ -21,17 +24,17 @@ service:
 customConfig:
   data_dir: "/vector-data-dir"
   sources:
-    vector_agent_source:
+    obsv_dataplane_logs_source:
       address: 0.0.0.0:9000
       type: vector
       version: "2"
 
   sinks:
-    filtered_vector_log:
+    obsv_dataplane_logs_sink:
       compression: none
       encoding:
         codec: json
       inputs:
-        - vector_agent_source
-      path: /tmp/vector-statefulSet-logs-%Y-%m-%d.log
+        - obsv_dataplane_logs_source
+      path: /tmp/observo-data-plane-logs-%Y-%m-%d.log
       type: file
