@@ -14,4 +14,4 @@ helm upgrade  --install obsv-data-plane deploy/helm/data-plane --devel --create-
 
 
 sleep 20
-kubectl apply -f load-tester/loader-pod.yaml
+kubectl apply -f load-test/loader-gen.yaml
