@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-kubectl delete -f load-tester/loader-pod.yaml
+kubectl delete -f load-test/load-gen.yaml
 
 helm uninstall -n obsv-telemetry-agent obsv-telemetry-agent
 
